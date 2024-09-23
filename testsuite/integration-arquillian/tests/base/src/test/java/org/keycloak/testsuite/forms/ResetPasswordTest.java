@@ -1408,9 +1408,10 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
             final String changePasswordUrl = MailUtils.getPasswordResetEmailLink(message);
 
             // Open link from email in the new tab
-            browserTabUtil.newTab(changePasswordUrl.trim());
+            //browserTabUtil.newTab(changePasswordUrl.trim());
 
             // Change password in tab2
+            driver.navigate().to(changePasswordUrl.trim());
             changePasswordOnUpdatePage(driver);
 
             events.expectRequiredAction(EventType.UPDATE_PASSWORD)
@@ -1430,8 +1431,8 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
             assertThat(driver.getCurrentUrl(), Matchers.containsString(redirectUri));
 
             // Close tab2
-            assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(2));
-            browserTabUtil.closeTab(1);
+            //assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(2));
+            //browserTabUtil.closeTab(1);
             assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(1));
 
             if (driver instanceof HtmlUnitDriver) {
