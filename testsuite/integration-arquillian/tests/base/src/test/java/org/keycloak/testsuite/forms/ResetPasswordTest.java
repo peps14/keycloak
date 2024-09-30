@@ -1285,7 +1285,6 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
 
             assertThat(tabUtil.getCountOfTabs(), Matchers.is(1));
 
-            loginPage.open();
             resetPasswordInNewTab(defaultUser, CLIENT_ID, REDIRECT_URI);
             assertThat(driver.getCurrentUrl(), Matchers.containsString(REDIRECT_URI));
 
@@ -1294,7 +1293,6 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
             logoutConfirmPage.assertCurrent();
             logoutConfirmPage.confirmLogout();
 
-            loginPage.open();
             resetPasswordInNewTab(defaultUser, CLIENT_ID, REDIRECT_URI);
             assertThat(driver.getCurrentUrl(), Matchers.containsString(REDIRECT_URI));
         }
@@ -1379,11 +1377,12 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
     private void resetPasswordInNewTab(UserRepresentation user, String clientId, String redirectUri) throws IOException {
         try (BrowserTabUtil browserTabUtil = BrowserTabUtil.getInstanceAndSetEnv(DroneUtils.getCurrentDriver())) {
             events.clear();
-            // browserTabUtil.getDriver().manage().deleteAllCookies();
+             browserTabUtil.getDriver().manage().deleteAllCookies();
 
             final int emailCount = greenMail.getReceivedMessages().length;
 
             // In tab1 start "Forget password" flow and make sure the email is sent
+            loginPage.open();
             loginPage.assertCurrent();
             loginPage.resetPassword();
 
