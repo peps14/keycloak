@@ -53,6 +53,7 @@ import org.keycloak.testsuite.pages.LogoutConfirmPage;
 import org.keycloak.testsuite.pages.VerifyEmailPage;
 import org.keycloak.testsuite.updaters.ClientAttributeUpdater;
 import org.keycloak.testsuite.util.BrowserTabUtil;
+import org.keycloak.testsuite.util.DroneUtils;
 import org.keycloak.testsuite.util.GreenMailRule;
 import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
 import org.keycloak.testsuite.util.KerberosUtils;
@@ -1376,8 +1377,9 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
     }
 
     private void resetPasswordInNewTab(UserRepresentation user, String clientId, String redirectUri) throws IOException {
-        try (BrowserTabUtil browserTabUtil = BrowserTabUtil.getInstanceAndSetEnv(driver)) {
+        try (BrowserTabUtil browserTabUtil = BrowserTabUtil.getInstanceAndSetEnv(DroneUtils.getCurrentDriver())) {
             events.clear();
+            // browserTabUtil.getDriver().manage().deleteAllCookies();
 
             final int emailCount = greenMail.getReceivedMessages().length;
 
@@ -1391,7 +1393,7 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
 
             assertEquals("You should receive an email shortly with further instructions.", loginPage.getSuccessMessage());
 
-            String tab1Url = driver.getCurrentUrl();
+            String tab1Url = DroneUtils.getCurrentDriver().getCurrentUrl();
 
             events.expectRequiredAction(EventType.SEND_RESET_PASSWORD)
                     .user(user.getId())
@@ -1408,11 +1410,10 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
             final String changePasswordUrl = MailUtils.getPasswordResetEmailLink(message);
 
             // Open link from email in the new tab
-            //browserTabUtil.newTab(changePasswordUrl.trim());
+            browserTabUtil.newTab(changePasswordUrl.trim());
 
             // Change password in tab2
-            driver.navigate().to(changePasswordUrl.trim());
-            changePasswordOnUpdatePage(driver);
+            changePasswordOnUpdatePage(DroneUtils.getCurrentDriver());
 
             events.expectRequiredAction(EventType.UPDATE_PASSWORD)
                     .detail(Details.CREDENTIAL_TYPE, PasswordCredentialModel.TYPE)
@@ -1428,21 +1429,21 @@ public class ResetPasswordTest extends AbstractTestRealmKeycloakTest {
             // User should be authenticated in current tab (tab2)
             WaitUtils.waitUntilElement(appPage.getAccountLink()).is().clickable();
             appPage.assertCurrent();
-            assertThat(driver.getCurrentUrl(), Matchers.containsString(redirectUri));
+            assertThat(DroneUtils.getCurrentDriver().getCurrentUrl(), Matchers.containsString(redirectUri));
 
             // Close tab2
-            //assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(2));
-            //browserTabUtil.closeTab(1);
+            assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(2));
+            browserTabUtil.closeTab(1);
             assertThat(browserTabUtil.getCountOfTabs(), Matchers.equalTo(1));
 
-            if (driver instanceof HtmlUnitDriver) {
+            if (DroneUtils.getCurrentDriver() instanceof HtmlUnitDriver) {
                 // With HtmlUnit, authChecker javascript doesn't work. Hence need to manually trigger "reset flow" endpoint
                 KeycloakUriBuilder builder = KeycloakUriBuilder.fromUri(tab1Url);
                 String resetFlowPath = builder
                         .replacePath(builder.getPath().substring(0, builder.getPath().lastIndexOf('/') + 1) + LoginActionsService.RESTART_PATH)
                         .queryParam(Constants.SKIP_LOGOUT, "true")
                         .build().toString();
-                driver.navigate().to(resetFlowPath);
+                DroneUtils.getCurrentDriver().navigate().to(resetFlowPath);
             }
 
             // User should be automatically authenticated in tab1 as well (due authChecker.js on real browsers like FF or Chrome)
