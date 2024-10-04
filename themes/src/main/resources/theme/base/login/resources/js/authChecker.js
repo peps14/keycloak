@@ -1,4 +1,7 @@
 const CHECK_INTERVAL_MILLISECS = 2000;
+const AUTH_SESSION_INTERVAL_MILLISECS = 1000;
+var initialAuthSession = null;
+var authSessionChannel = null;
 const initialSession = getSession();
 
 let timeout;
@@ -11,6 +14,12 @@ addEventListener("beforeunload", () => {
     timeout = undefined;
   }
 });
+
+
+//close channel after 1 seconds
+setTimeout(() => {
+  authSessionChannel.close();
+}, AUTH_SESSION_INTERVAL_MILLISECS);
 
 export function checkCookiesAndSetTimer(loginRestartUrl) {
   if (initialSession) {
@@ -30,6 +39,18 @@ export function checkCookiesAndSetTimer(loginRestartUrl) {
     // Redirect to the login restart URL. This can typically automatically login user due the SSO
     location.href = loginRestartUrl;
   }
+}
+
+export function checkAuthSessionChange(authSessionId, realm) {
+  initialAuthSession = authSessionId;
+  authSessionChannel = new BroadcastChannel(realm);
+  authSessionChannel.onmessage = (event) => {
+    if (initialAuthSession !== event.data) {
+      initialAuthSession = event.data;
+      location.reload();
+    }
+  };
+  authSessionChannel.postMessage(authSessionId);
 }
 
 function getSession() {
