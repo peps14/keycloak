@@ -84,13 +84,20 @@
         </#list>
     </#if>
     <script type="module" src="${url.resourcesPath}/js/passwordVisibility.js"></script>
-    <script type="module">
-        import { checkCookiesAndSetTimer } from "${url.resourcesPath}/js/authChecker.js";
+    <#if authenticationSession??>
+        <script type="module">
+            import { checkCookiesAndSetTimer } from "${url.resourcesPath}/js/authChecker.js";
+            import { checkAuthSessionChange } from "${url.resourcesPath}/js/authChecker.js";
 
-        checkCookiesAndSetTimer(
-            "${url.ssoLoginInOtherTabsUrl?no_esc}"
-        );
-    </script>
+            checkCookiesAndSetTimer(
+              "${url.ssoLoginInOtherTabsUrl?no_esc}"
+            );
+            checkAuthSessionChange(
+              "${authenticationSession.authSessionIdHash}",
+              "${realm.name}"
+            );
+        </script>
+    </#if>
 </head>
 
 <body id="keycloak-bg" class="${properties.kcBodyClass!}">

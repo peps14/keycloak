@@ -1,4 +1,5 @@
 const CHECK_INTERVAL_MILLISECS = 2000;
+const AUTH_SESSION_INTERVAL_MILLISECS = 1000;
 const initialSession = getSession();
 
 let timeout;
@@ -30,6 +31,21 @@ export function checkCookiesAndSetTimer(loginRestartUrl) {
     // Redirect to the login restart URL. This can typically automatically login user due the SSO
     location.href = loginRestartUrl;
   }
+}
+
+export function checkAuthSessionChange(authSessionIdHash, realm) {
+  const key = 'auth-session-' + realm;
+
+  // Update the session hash if it has changed
+  if (authSessionIdHash !== localStorage.getItem(key)) {
+    localStorage.setItem(key, authSessionIdHash);
+  }
+
+  setTimeout(() => {
+    if (authSessionIdHash !== localStorage.getItem(key)) {
+      location.reload();
+    }
+  }, AUTH_SESSION_INTERVAL_MILLISECS);
 }
 
 function getSession() {
