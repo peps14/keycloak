@@ -75,7 +75,12 @@ public abstract class BaseUpdater<K, V> implements Updater<K, V> {
 
     @Override
     public final void markDeleted() {
-        state = UpdaterState.DELETED;
+        state = isCreated() ? UpdaterState.TRANSIENT : UpdaterState.DELETED;
+    }
+
+    @Override
+    public boolean isTransient() {
+        return state == UpdaterState.TRANSIENT;
     }
 
     @Override
@@ -120,5 +125,9 @@ public abstract class BaseUpdater<K, V> implements Updater<K, V> {
          * The cache value was read from the Infinispan cache.
          */
         READ,
+        /**
+         * The cache value is not stored the Infinispan cache.
+         */
+        TRANSIENT,
     }
 }
