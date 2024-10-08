@@ -18,11 +18,17 @@
 package org.keycloak.migration.migrators;
 
 import java.lang.invoke.MethodHandles;
+
+import org.infinispan.Cache;
+import org.infinispan.factories.ComponentRegistry;
+import org.infinispan.persistence.manager.PersistenceManager;
 import org.jboss.logging.Logger;
+import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 import org.keycloak.migration.MigrationProvider;
 import org.keycloak.migration.ModelVersion;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.sessions.infinispan.entities.RootAuthenticationSessionEntity;
 import org.keycloak.representations.idm.RealmRepresentation;
 
 /**
@@ -53,5 +59,10 @@ public static final ModelVersion VERSION = new ModelVersion("26.1.0");
         // add the new service_account scope to the realm
         MigrationProvider migrationProvider = session.getProvider(MigrationProvider.class);
         migrationProvider.addOIDCServiceAccountClientScope(realm);
+
+        //clear remote stores for auth sessions
+        InfinispanConnectionProvider infinispanConnectionProvider = session.getProvider(InfinispanConnectionProvider.class);
+        Cache<String, RootAuthenticationSessionEntity> authSessionsCache = infinispanConnectionProvider.getCache(InfinispanConnectionProvider.AUTHENTICATION_SESSIONS_CACHE_NAME);
+        ComponentRegistry.componentOf(authSessionsCache, PersistenceManager.class).clearAllStores(PersistenceManager.AccessMode.BOTH);
     }
 }
