@@ -238,7 +238,8 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
             var writeCache = CacheDecorators.skipCacheStoreIfRemoteCacheIsEnabled(cache);
             while (iteration++ < InfinispanUtil.MAXIMUM_REPLACE_RETRIES) {
 
-                if (task.shouldRemove(session)) {
+                if (session.shouldEvaluateRemoval() && task.shouldRemove(session)) {
+                    logger.debugf("Entity %s removed after evaluation", key);
                     CacheDecorators.skipCacheStoreIfRemoteCacheIsEnabled(cache)
                             .withFlags(Flag.IGNORE_RETURN_VALUES)
                             .remove(key);
