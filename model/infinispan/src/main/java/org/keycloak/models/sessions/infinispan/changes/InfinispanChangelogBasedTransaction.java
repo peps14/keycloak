@@ -237,6 +237,14 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
             V session = oldVersion.getEntity();
             var writeCache = CacheDecorators.skipCacheStoreIfRemoteCacheIsEnabled(cache);
             while (iteration++ < InfinispanUtil.MAXIMUM_REPLACE_RETRIES) {
+
+                if (task.shouldRemove(session)) {
+                    CacheDecorators.skipCacheStoreIfRemoteCacheIsEnabled(cache)
+                            .withFlags(Flag.IGNORE_RETURN_VALUES)
+                            .remove(key);
+                    return;
+                }
+
                 SessionEntityWrapper<V> newVersionEntity = generateNewVersionAndWrapEntity(session, oldVersion.getLocalMetadata());
                 returnValue = writeCache.computeIfPresent(key, new ReplaceFunction<>(oldVersion.getVersion(), newVersionEntity), lifespanMs, TimeUnit.MILLISECONDS, maxIdleTimeMs, TimeUnit.MILLISECONDS);
 

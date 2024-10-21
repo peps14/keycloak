@@ -171,6 +171,11 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
                         entity.getAuthenticationSessions().remove(tabId);
                         entity.setTimestamp(currentTime);
                     }
+
+                    @Override
+                    public boolean shouldRemove(RootAuthenticationSessionEntity entity) {
+                        return entity.getAuthenticationSessions().isEmpty();
+                    }
                 };
                 update(task);
             }
