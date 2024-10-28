@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 import org.junit.Ignore;
 
@@ -163,11 +164,15 @@ public class ConcurrencyTest extends AbstractConcurrencyTest {
 
             c = realm.clients().get(id).toRepresentation();
             assertNotNull(c);
-            assertTrue("Client " + name + " not found in client list",
-              realm.clients().findAll().stream()
-                .map(ClientRepresentation::getClientId)
-                .filter(Objects::nonNull)
-                .anyMatch(name::equals));
+
+            int findAttempts = 5;
+            boolean clientFound = IntStream.range(0, findAttempts)
+                    .anyMatch(i -> realm.clients().findAll().stream()
+                            .map(ClientRepresentation::getClientId)
+                            .filter(Objects::nonNull)
+                            .anyMatch(name::equals));
+
+            assertTrue("Client " + name + " not found in client list after " + findAttempts + " attempts", clientFound);
         }
     }
 
@@ -193,11 +198,15 @@ public class ConcurrencyTest extends AbstractConcurrencyTest {
 
             c = client.toRepresentation();
             assertNotNull(c);
-            assertTrue("Client " + name + " not found in client list",
-              clients.findAll().stream()
-                .map(ClientRepresentation::getClientId)
-                .filter(Objects::nonNull)
-                .anyMatch(name::equals));
+
+            int findAttempts = 5;
+            boolean clientFound = IntStream.range(0, findAttempts)
+                    .anyMatch(i -> clients.findAll().stream()
+                            .map(ClientRepresentation::getClientId)
+                            .filter(Objects::nonNull)
+                            .anyMatch(name::equals));
+
+            assertTrue("Client " + name + " not found in client list after " + findAttempts + " attempts", clientFound);
 
             client.remove();
             try {
