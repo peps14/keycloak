@@ -60,7 +60,7 @@ public abstract class BaseUpdater<K, V> implements Updater<K, V> {
 
     @Override
     public final boolean isDeleted() {
-        return return state == UpdaterState.DELETED || state == UpdaterState.DELETED_TRANSIENT;
+        return state == UpdaterState.DELETED || state == UpdaterState.DELETED_TRANSIENT;
     }
 
     @Override
