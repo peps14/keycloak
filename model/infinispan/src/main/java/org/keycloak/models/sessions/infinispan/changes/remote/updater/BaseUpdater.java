@@ -75,7 +75,7 @@ public abstract class BaseUpdater<K, V> implements Updater<K, V> {
 
     @Override
     public final void markDeleted() {
-        state = isCreated() ? UpdaterState.TRANSIENT : UpdaterState.DELETED;
+        state = UpdaterState.DELETED;
     }
 
     @Override
