@@ -22,17 +22,24 @@ import java.util.Base64;
 import java.util.Objects;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.VerificationException;
+import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.Time;
 import org.keycloak.cookie.CookieProvider;
 import org.keycloak.cookie.CookieType;
+import org.keycloak.crypto.Algorithm;
 import org.keycloak.crypto.JavaAlgorithm;
+import org.keycloak.crypto.SignatureProvider;
+import org.keycloak.crypto.SignatureSignerContext;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.jose.jws.crypto.HashUtils;
 import org.keycloak.models.ClientModel;
+import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.UserSessionProvider;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.utils.SessionExpiration;
 import org.keycloak.protocol.RestartLoginCookie;
 import org.keycloak.sessions.AuthenticationSessionModel;
@@ -124,12 +131,16 @@ public class AuthenticationSessionManager {
      * @param authSessionId decoded authSessionId (without route info attached)
      */
     public void setAuthSessionCookie(String authSessionId) {
+        log.info("BEFORE ENCODE: +" + authSessionId);
         StickySessionEncoderProvider encoder = session.getProvider(StickySessionEncoderProvider.class);
-        String encodedAuthSessionId = encoder.encodeSessionId(authSessionId);
+        String signedAuthSessionId = signAndEncodeAuthSessionId(authSessionId);
+        log.info("AFTER SIGN: +" + signedAuthSessionId);
+        String encodedWithRoute = encoder.encodeSessionId(signedAuthSessionId);
 
-        session.getProvider(CookieProvider.class).set(CookieType.AUTH_SESSION_ID, encodedAuthSessionId);
+        log.info("encoder: " +  encoder.getClass().getName() + ", AFTER NODE" + encodedWithRoute);
+        session.getProvider(CookieProvider.class).set(CookieType.AUTH_SESSION_ID, encodedWithRoute);
 
-        log.debugf("Set AUTH_SESSION_ID cookie with value %s", encodedAuthSessionId);
+        log.debugf("Set AUTH_SESSION_ID cookie with value %s", encodedWithRoute);
     }
 
     /**
@@ -155,6 +166,10 @@ public class AuthenticationSessionManager {
         String decodedAuthSessionId = encoder.decodeSessionId(encodedAuthSessionId);
         String reencoded = encoder.encodeSessionId(decodedAuthSessionId);
 
+        if (!KeycloakModelUtils.isValidUUID(decodedAuthSessionId)) {
+            decodedAuthSessionId = decodeBase64AndValidateSignature(decodedAuthSessionId, false);
+        }
+
         return new AuthSessionId(decodedAuthSessionId, reencoded);
     }
 
@@ -167,6 +182,51 @@ public class AuthenticationSessionManager {
         }
     }
 
+    public String decodeBase64AndValidateSignature(String encodedBase64AuthSessionId, boolean validate) {
+        log.infof("Found AUTH_SESSION_ID cookie with value %s", encodedBase64AuthSessionId);
+
+        try {
+            String decodedAuthSessionId = new String(Base64Url.decode(encodedBase64AuthSessionId), StandardCharsets.UTF_8);
+            if (decodedAuthSessionId.lastIndexOf(".") != -1) {
+                String authSessionId = decodedAuthSessionId.substring(0, decodedAuthSessionId.indexOf("."));
+                String signature = decodedAuthSessionId.substring(decodedAuthSessionId.indexOf(".") + 1);
+                return validate ? validateAuthSessionSignature(authSessionId, signature) : authSessionId;
+            }
+        } catch (Exception e) {
+            log.errorf("Error decoding auth session with value: ", encodedBase64AuthSessionId, e);
+        }
+
+        return null;
+    }
+
+    public String validateAuthSessionSignature(String authSessionId, String signature) {
+        SignatureProvider signatureProvider = session.getProvider(SignatureProvider.class, Constants.INTERNAL_SIGNATURE_ALGORITHM);
+        SignatureSignerContext signer = signatureProvider.signer();
+        try {
+            log.info("PART1:" + authSessionId + ", PART2:" + signature);
+            boolean valid = signatureProvider.verifier(signer.getKid()).verify(authSessionId.getBytes(StandardCharsets.UTF_8), Base64Url.decode(signature));
+            if (!valid) {
+                return null;
+            }
+            return authSessionId;
+        } catch (VerificationException e) {
+            log.errorf("signature validation failed for auth session id: %s", authSessionId, e);
+        }
+        return null;
+    }
+
+    public String signAndEncodeAuthSessionId(String encodedAuthSessionId) {
+        SignatureProvider signatureProvider = session.getProvider(SignatureProvider.class, Constants.INTERNAL_SIGNATURE_ALGORITHM);
+        SignatureSignerContext signer = signatureProvider.signer();
+        StringBuilder buffer = new StringBuilder();
+        byte[] signature =  signer.sign(encodedAuthSessionId.getBytes(StandardCharsets.UTF_8));
+        buffer.append(encodedAuthSessionId);
+        if (signature != null) {
+            buffer.append('.');
+            buffer.append(Base64Url.encode(signature));
+        }
+        return Base64Url.encode(buffer.toString().getBytes(StandardCharsets.UTF_8));
+    }
 
     /**
      * @param realm
@@ -178,13 +238,20 @@ public class AuthenticationSessionManager {
             return null;
         }
 
-        StickySessionEncoderProvider encoder = session.getProvider(StickySessionEncoderProvider.class);
+        StickySessionEncoderProvider rootEncoder = session.getProvider(StickySessionEncoderProvider.class);
         // in case the id is encoded with a route when running in a cluster
-        String decodedId = encoder.decodeSessionId(oldEncodedId);
+        String rootDecodedId = rootEncoder.decodeSessionId(oldEncodedId);
         // we can't blindly trust the cookie and assume it is valid and referencing a valid root auth session
         // but make sure the root authentication session actually exists
         // without this check there is a risk of resolving user sessions from invalid root authentication sessions as they share the same id
-        RootAuthenticationSessionModel rootAuthenticationSession = session.authenticationSessions().getRootAuthenticationSession(realm, decodedId);
+
+        String base64DecodedAndVerified = decodeBase64AndValidateSignature(rootDecodedId, true);
+
+        if(base64DecodedAndVerified == null) {
+            return null;
+        }
+
+        RootAuthenticationSessionModel rootAuthenticationSession = session.authenticationSessions().getRootAuthenticationSession(realm, base64DecodedAndVerified);
         return rootAuthenticationSession != null ? oldEncodedId : null;
     }
 
