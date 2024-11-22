@@ -127,6 +127,7 @@ public class AuthenticationSessionClusterTest extends AbstractClusterTest {
             String authSessionCookie = AuthenticationSessionFailoverClusterTest.getAuthSessionCookieValue(driver);
 
             Assert.assertEquals(36, authSessionCookie.length());
+            Assert.assertEquals(authSessionCookie.indexOf("."), -1);
 
             // Drop all cookies before continue
             driver.manage().deleteAllCookies();
