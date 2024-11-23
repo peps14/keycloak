@@ -95,7 +95,7 @@ public class AuthenticationSessionClusterTest extends AbstractClusterTest {
             driver.navigate().to(testAppLoginNode1URL);
             String authSessionCookie = AuthenticationSessionFailoverClusterTest.getAuthSessionCookieValue(driver);
 
-            Assert.assertNotEquals(authSessionCookie.indexOf("."), -1);
+            Assert.assertNotEquals( -1, authSessionCookie.indexOf("."));
             String route = authSessionCookie.substring(authSessionCookie.indexOf(".") + 1);
             visitedRoutes.add(route);
 

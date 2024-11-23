@@ -133,10 +133,10 @@ public class AuthenticationSessionManager {
         log.info("BEFORE ENCODE: +" + authSessionId);
         StickySessionEncoderProvider encoder = session.getProvider(StickySessionEncoderProvider.class);
         String signedAuthSessionId = signAndEncodeAuthSessionId(authSessionId);
-        log.info("AFTER SIGN: +" + authSessionId);
+        log.info("AFTER SIGN: +" + signedAuthSessionId);
         String encodedWithRoute = encoder.encodeSessionId(signedAuthSessionId);
 
-        log.info("AFTER NODE: +" + encodedWithRoute);
+        log.info("encoder: " +  encoder.getClass().getName() + ", AFTER NODE" + encodedWithRoute);
         session.getProvider(CookieProvider.class).set(CookieType.AUTH_SESSION_ID, encodedWithRoute);
 
         log.debugf("Set AUTH_SESSION_ID cookie with value %s", encodedWithRoute);
