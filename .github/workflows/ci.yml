@@ -85,7 +85,9 @@ jobs:
 
       - name: Run Forms IT iteration ${{ matrix.iteration }}
         run: |
-          ./mvnw test -Pauth-server-quarkus -Dtest=LoginTest -Dbrowser=chrome -f testsuite/integration-arquillian/tests/base/pom.xml 2>&1 | misc/log/trimmer.sh
+          TESTS=`testsuite/integration-arquillian/tests/base/testsuites/suite.sh forms`
+          echo "Tests: $TESTS"
+          ./mvnw test ${{ env.SUREFIRE_RETRY }} -Pauth-server-quarkus -Dtest=$TESTS -Dbrowser=chrome -f testsuite/integration-arquillian/tests/base/pom.xml 2>&1 | misc/log/trimmer.sh
   check:
     name: Status Check - Keycloak CI
     if: always()
